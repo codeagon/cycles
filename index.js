@@ -6,11 +6,18 @@ const aero = ["VK_Aeroset.VK_SkyCastle00_AERO", "aen_aeroset.AERO.Serpent_Island
 module.exports = function Cycles(dispatch) {
     const command = Command(dispatch);
     let count = 0;
+    let onMapChange = true;
+
+    dispatch.hook('C_LOAD_TOPO_FIN', 1, (event) => {
+        if (onMapChange) {
+            bleb = setInterval(timer, 120000);
+        }
+    });
 
     function aeroSwitch(arg) {
         dispatch.toClient('S_AERO', 1, {
             enabled: 1,
-            blendTime: 120,//time it takes to transition between thingies, probably too high
+            blendTime: 120, //time it takes to transition between thingies, probably too high
             aeroSet: aero[arg]
         });
         count++;
