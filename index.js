@@ -6,10 +6,9 @@ const aero = ["VK_Aeroset.VK_SkyCastle00_AERO", "aen_aeroset.AERO.Serpent_Island
 module.exports = function Cycles(dispatch) {
     const command = Command(dispatch);
     let count = 0;
-    let onMapChange = true;
 
     dispatch.hook('C_LOAD_TOPO_FIN', 1, (event) => {
-        if (onMapChange) {
+        if (config.onMapChange) {
             bleb = setInterval(timer, 120000);
         }
     });
@@ -35,6 +34,24 @@ module.exports = function Cycles(dispatch) {
         command.message('Time cycles activated.');
         bleb = setInterval(timer, 120000); // takes TWO whole minutes!!! Seems like a good time
     });
+
+
+    //eheheheahEHehaehueh
+    try {
+        config = require('./config.json');
+    } catch (e) {
+        config = {
+            onMapChange = false
+        };
+        saveConfig();
+    }
+
+    function saveConfig() {
+        fs.writeFile(path.join(__dirname, 'config.json'), JSON.stringify(
+                config, null, 4), err => {
+            console.log('[[Cycles]] - Config file generated, uguu~');
+        });
+    }
 
     this.destructor = () => {
         command.remove('cycle'); // since this doesn't need anything we can do reloading stuff
