@@ -174,13 +174,14 @@ module.exports = function Cycles(mod) {
             case "disable":
             case "deactivate": //~todo thesaurus for every single word in the English language for off and on
                 command.message('Time Cycles Deactivating and reverting')
+                count = 1
                 clearInterval(bleb)
                 deAero()
                 break
             case "restart":
             case "reset":
                 deAero()
-                count = 0
+                count = 1
                 bleb = setInterval(timer, config.cycleTime)
                 break
             case "timer":
@@ -204,6 +205,7 @@ module.exports = function Cycles(mod) {
     }
 
     this.destructor = () => {
+        clearInterval(bleb)
         command.remove('cycle') // since this doesn't need anything we can do reloading stuff
     }
 }
