@@ -186,6 +186,11 @@ module.exports = function Cycles(mod) {
                 break
             case "timer":
             case "time":
+                clearInterval(bleb)
+                deAero()
+                count = 1
+                config.cycleTime = arg
+                saveConfig()
                 bleb = setInterval(timer, arg)
                 command.message(`Timer interval set to ${arg}ms`)
                 break
