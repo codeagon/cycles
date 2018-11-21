@@ -1,32 +1,59 @@
 /* global __dirname */
 
-const Command = require('command');
-const GameState = require('tera-game-state');
-const path = require('path');
-const fs = require('fs');
+const path = require('path')
+const fs = require('fs')
 
-const aero = ["VK_Aeroset.VK_SkyCastle00_AERO", "aen_aeroset.AERO.Serpent_Island_AERO_FINAL", //add or change things to this if you want
-    "aen_aeroset.AERO.AEN_C_Misty_Island_Outdoor_AERO", "RNW_Aeroset_Various.AERO.Sunset_AERO",
-    "atw_aeroset.AERO.SPR_Dawn_Garden_02_AERO", "lobby_ch_select_aero.AERO.Lobby_CH_Select_AERO_Night_02"
-];
 
-module.exports = function Cycles(dispatch) {
-    const command = Command(dispatch);
-    const game = GameState(dispatch); //maintaining our status as a reloadable mod is important
-    let count = 0,
-            bleb;
+let BadGui
+
+try {
+    BadGui = require('badGui')
+} catch (e) {
+    try {
+        BadGui = require('badGui-master')
+    } catch (e) {
+        console.log(`[Cycles] - badGUI not installed, GUI functionality disabled, please see the readme for more information`)
+    }
+}
+
+const aList = require('./aes.json')
+
+const skySet = require('./preset.json')
+
+
+
+
+module.exports = function Cycles(mod) {
+    const command = mod.command || mod.require.command
+    let count = 1,
+        bleb,
+        gui,
+        nextName,
+        useGui = false,
+        deAeroNextRun = false,
+        nextAero = [],
+        usedAeros = [],
+        config
+
+    try {
+        gui = new BadGui(mod)
+        useGui = true
+    } catch (e) {
+        useGui = false
+        console.log(`[Cycles] - badGUI not installed, GUI functionality disabled, please see the readme for more information`)
+    }
     // heuheuea
     //7200000 MS (43200000/aeroNum) per would be real-like I guess??????
     try {
-        var config = require('./config.json');
+        config = require('./config.json')
     } catch (e) {
-        var config = {
+        config = {
             onMapChange: false,
             changeEveryTp: false,
             cycleTime: 120000,
             version: "1"
-        };
-        saveConfig();
+        }
+        saveConfig()
     }
 
     if (config.version !== "1") {
@@ -34,80 +61,149 @@ module.exports = function Cycles(dispatch) {
             "changeEveryTp": false,
             cycleTime: 120000,
             version: "1"
-        });
-        saveConfig();
+        })
+        saveConfig()
     }
 
 
-    dispatch.hook('C_LOAD_TOPO_FIN', 1, (event) => {
+    mod.hook('C_LOAD_TOPO_FIN', 1, () => {
         if (config.onMapChange) {
-            bleb = setInterval(timer, config.cycleTime);
+            bleb = setInterval(timer, config.cycleTime)
         }
-    });
+    })
+
+    function randBool() {
+        return Boolean(Math.random() < 0.5); //use a config for this
+    }
+
+    function rand(min, max) {
+        return Math.floor(Math.random() * (max - min) + min);
+    }
 
     function aeroSwitch(arg) {
-        dispatch.toClient('S_AERO', 1, {
+        console.log(count)
+        for (let i in skySet) {
+            if (skySet[i].time == arg && !usedAeros.includes(skySet[i].name)) {
+                nextAero.push(skySet[i].name) //shove this in an array because I'm too dumb to figure out a better way
+            }
+        }
+        nextName = nextAero[rand(0, nextAero.length)]
+        //nextName = [Math.floor(Math.random() * nextAero.length)];
+        usedAeros.push(nextName)
+        console.log(nextName)
+        mod.send('S_AERO', 1, {
             enabled: 1,
-            blendTime: 120, //time it takes to transition between thingies, probably too high
-            aeroSet: aero[arg]
-        });
-        count++;
+            blendTime: 110, //time it takes to transition between thingies, probably too high
+            aeroSet: nextName
+        })
+        count++
+        nextAero = []
     }
 
     function timer() {
-        if (count !== aero.length) { // check if the current count is more than the amount of AEROs in the list
-            aeroSwitch(count);
-        } else {
-            count = 0;
+        if (count >= 5 && deAeroNextRun) {
+            deAeroNextRun = false
+            deAero()
+            usedAeros = []
+            count = 1
+            aeroSwitch(count)
+            return
+        }
+        if (count >= 5) {
+            count = 1
+            aeroSwitch(count)
+            deAeroNextRun = true
+            return
+        }
+
+        /*if (randBool()) {
+            console.log('weathertime')
+            mod.send('S_AERO', 1, {
+                enabled: 1,
+                blendTime: 120, //time it takes to transition between thingies, probably too high
+                aeroSet: weather[rand(1, 4)]
+            })
+            aeroSwitch(count)
+        } else {*/
+
+        aeroSwitch(count)
+    }
+
+
+    function deAero() {
+        mod.send('S_SPAWN_NPC', 10, {
+            gameId: 8989898989,
+            templateId: 30210000, // ♥ ♥ ♥ :cuteboi: to the rescue ♥ ♥ ♥
+            huntingZoneId: 1000,
+            spawnScript: 105,
+            visible: true
+        })
+    }
+
+
+    function handleGui(page, arg) {
+        switch (page) {
+            default:
+                console.log('aaaAA')
         }
     }
 
-    command.add('cycle', (arg, arg2, arg3) => {
-        switch (arg) {
+    command.add('cycle', (cmd, arg) => {
+        switch (cmd) {
+            case 'gui':
+                if (useGui) {
+                    handleGui(arg)
+                }
+                break
+            case 't':
+                console.log(aList[arg])
+                mod.send('S_AERO', 1, {
+                    enabled: 1,
+                    blendTime: 1, //time it takes to transition between thingies, probably too high
+                    aeroSet: aList[arg]
+                })
+                break
             case "on":
             case "enable":
             case "activate":
-                command.message('Time cycles activated.');
-                bleb = setInterval(timer, config.cycleTime); // takes TWO whole minutes!!! Seems like a good time
-                break;
+                command.message('Time cycles activated.')
+                bleb = setInterval(timer, config.cycleTime) // takes TWO whole minutes!!! Seems like a good time
+                break
             case "off":
+            case "stop":
             case "disable":
-            case "deactivate": //todo thesaurus for every single word in the English language for off and on
-                command.message('Time Cycles Deactivating and reverting');
-                dispatch.toClient('S_START_ACTION_SCRIPT', 3, {
-                    gameId: game.me.gameId,
-                    script: 105
-                });
-                clearInterval(bleb);
-                break;
+            case "deactivate": //~todo thesaurus for every single word in the English language for off and on
+                command.message('Time Cycles Deactivating and reverting')
+                clearInterval(bleb)
+                deAero()
+                break
             case "restart":
             case "reset":
-                dispatch.toClient('S_START_ACTION_SCRIPT', 3, {
-                    gameId: game.me.gameId,
-                    script: 105
-                });
-                count = 0;
-                bleb = setInterval(timer, config.cycleTime);
-                break;
+                deAero()
+                count = 0
+                bleb = setInterval(timer, config.cycleTime)
+                break
             case "timer":
             case "time":
-                bleb = setInterval(timer, arg2);
-                command.message(`Timer interval set to ${arg2}ms`);
+                bleb = setInterval(timer, arg)
+                command.message(`Timer interval set to ${arg}ms`)
                 break
+            default:
+                command.message(`Incorrect command entered!`)
         }
-    });
+    })
 
 
     //eheheheahEHehaehueh
 
     function saveConfig() {
         fs.writeFile(path.join(__dirname, 'config.json'), JSON.stringify(
-                config, null, 4), err => {
-            console.log('[[Cycles]] - Config file generated, uguu~');
-        });
+            config, null, 4), () => {
+                console.log('[[Cycles]] - Config file saved, uguu~')
+            })
     }
 
     this.destructor = () => {
-        command.remove('cycle'); // since this doesn't need anything we can do reloading stuff
-    };
-};
+        command.remove('cycle') // since this doesn't need anything we can do reloading stuff
+    }
+}
