@@ -3,12 +3,11 @@
 const path = require('path')
 const fs = require('fs')
 
-
 let BadGui
 
 try {
     BadGui = require('badGui')
-} catch (e) {
+} catch {
     try {
         BadGui = require('badGui-master')
     } catch (e) {
@@ -17,11 +16,7 @@ try {
 }
 
 const aList = require('./aes.json')
-
 const skySet = require('./preset.json')
-
-
-
 
 module.exports = function Cycles(mod) {
     const command = mod.command || mod.require.command
@@ -65,11 +60,14 @@ module.exports = function Cycles(mod) {
         saveConfig()
     }
 
+    mod.game.on('leave_game', () => {
+        if (bleb)
+            clearInterval(bleb)
+    });
 
     mod.hook('C_LOAD_TOPO_FIN', 1, () => {
-        if (config.onMapChange) {
+        if (config.onMapChange)
             bleb = setInterval(timer, config.cycleTime)
-        }
     })
 
     function randBool() {
@@ -81,21 +79,19 @@ module.exports = function Cycles(mod) {
     }
 
     function aeroSwitch(arg) {
-        console.log(count)
         for (let i in skySet) {
             if (skySet[i].time == arg && !usedAeros.includes(skySet[i].name)) {
                 nextAero.push(skySet[i].name) //shove this in an array because I'm too dumb to figure out a better way
             }
         }
         nextName = nextAero[rand(0, nextAero.length)]
-        //nextName = [Math.floor(Math.random() * nextAero.length)];
         usedAeros.push(nextName)
-        console.log(nextName)
         mod.send('S_AERO', 1, {
             enabled: 1,
-            blendTime: 110, //time it takes to transition between thingies, probably too high
+            blendTime: 80, //time it takes to transition between thingies, probably too high
             aeroSet: nextName
         })
+        console.log(count+' : '+nextName)
         count++
         nextAero = []
     }
